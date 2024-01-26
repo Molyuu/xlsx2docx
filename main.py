@@ -2,17 +2,16 @@
 
 import tkinter as tk
 from tkinter import filedialog
-from docxtpl import DocxTemplate
-from openpyxl import load_workbook
-from shutil import move, copy
-from os import remove, makedirs
+import os
+from shutil import move, copy2
 from datetime import datetime
 from time import sleep
-import os
-import subprocess
-import functools
-import shutil
-import time as tm
+from subprocess import Popen
+from functools import partial
+from time import time
+
+from docxtpl import DocxTemplate
+from openpyxl import load_workbook
 
 
 def column_to_name(colnum):
@@ -36,7 +35,7 @@ def format_excel(excel_path):
     new_excel_path = os.path.join(excel_dir, new_excel_name)
 
     # Use shutil.copy2 to ensure the same attributes (e.g., timestamps) are copied
-    shutil.copy2(excel_path, new_excel_path)
+    copy2(excel_path, new_excel_path)
 
     wb = load_workbook(new_excel_path, data_only=True)
     sheet = wb.active
@@ -62,7 +61,7 @@ def process_files():
     docx_template_path = file_entry_2.get()
     if excel_path and docx_template_path:
         result_label.config(text="Processing...", fg="blue")
-        partial_process_func = functools.partial(
+        partial_process_func = partial(
             process_excel_to_docx, excel_path, docx_template_path, result_label
         )
         partial_process_func()
@@ -88,7 +87,7 @@ def open_file_dialog_2():
 
 # Function to process Excel to DOCX conversion
 def process_excel_to_docx(excel_path, docx_template_path, result_label):
-    start_time = tm.time()  # Record the start time
+    start_time = time()  # Record the start time
     time_format = "{:.2f}s"
 
     excel_dir, excel_file = os.path.split(excel_path)
@@ -106,7 +105,7 @@ def process_excel_to_docx(excel_path, docx_template_path, result_label):
         str(current_time.minute),
         str(current_time.second),
     )
-    makedirs(folder_name)
+    os.makedirs(folder_name)
     format_excel(excel_path)
 
     # Define the 'doc' variable here
@@ -131,19 +130,19 @@ def process_excel_to_docx(excel_path, docx_template_path, result_label):
             doc.render(context)
             doc.save("%s.docx" % filename)
             processed_files += 1
-            time_taken = tm.time() - start_time
+            time_taken = time() - start_time
             progress_message = f"Processing {filename} ({processed_files}/{total_files}) \n- Time taken: {time_format.format(time_taken)} \n- Lines processed: {processed_files}"
             result_label.config(text=progress_message, fg="blue")
             root.update()  # Update the GUI to show the progress
             move("%s.docx" % filename, "./%s" % folder_name)
 
-    remove(new_excel_path)
+    os.remove(new_excel_path)
     completed_text = f"Processing completed. Check the output folder.\n- Time taken: {time_format.format(time_taken)} \n - Lines processed: {processed_files}\n - Average speed: {time_format.format(time_taken/processed_files)} per file"
     result_label.config(text=completed_text, fg="green")
 
     # Open the output directory after processing
     if os.path.exists(folder_name):
-        subprocess.Popen(["explorer", folder_name])  # Use "explorer" for Windows
+        Popen(["explorer", folder_name])  # Use "explorer" for Windows
     else:
         result_label.config(text="Output directory does not exist.", fg="red")
 
